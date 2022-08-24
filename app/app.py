@@ -2,6 +2,7 @@ import os
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 
+
 # Create app and connect to database
 application = Flask(__name__)
 application.config["MONGO_URI"] = 'mongodb://' + \
@@ -22,28 +23,34 @@ def read_device_broadcast():
     address = request.form.get('address')
 
     # add device to list of websocket servers
-    db.todos.insert_one({
+    db.devices.insert_one({
         'name': name,
         'version': version,
         'address': address
     })
-    return jsonify(message='success'), 200
+    return jsonify(message='success'), 201
 
 
-@application.route("/", methods=['GET'])
+@application.route("/devices", methods=['GET'])
 # Route to receive the devices that exposed their WS server
 def send_devices():
     """Retrieve devices from database and send them as JSON"""
-    # todos = db.todos.find()
-    # return jsonify([todo for todo in todos])
-    return jsonify(
-        status=True,
-        message='success'
-    )
+    device = {}
+    response = []
+
+    for item in db.devices.find():
+        device = {
+            'name': item['name'],
+            'version': item['version'],
+            'address': item['address']
+        }
+        response.append(device)
+
+    return jsonify(status=True, data=response)
 
 
 if __name__ == "__main__":
     ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)
-    ENVIRONMENT_PORT = os.environ.get("APP_PORT", 5000)
+    ENVIRONMENT_PORT = os.environ.get("APP_PORT", 80)
     application.run(host='0.0.0.0', port=ENVIRONMENT_PORT,
                     debug=ENVIRONMENT_DEBUG)
