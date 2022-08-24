@@ -1,37 +1,42 @@
 version: '3'
 services:
 
-  lazarillo_admin_backend:
+  lazarillo_flask_backend:
     build:
       context: app
       dockerfile: Dockerfile
-    image: digitalocean.com/flask-python:3.10
-    container_name: lazarillo_admin_backend
+    image: lazarillo_flask_backend
+    container_name: lazarillo_flask_backend
     restart: unless-stopped
     environment:
       APP_ENV: "prod"
       APP_DEBUG: "False"
-      APP_PORT: 5000
-      MONGODB_DATABASE: lazarillo_admin_db
+      APP_PORT: 80
+      MONGODB_DATABASE: lazarillo
       MONGODB_USERNAME: mongouser
       MONGODB_PASSWORD: mongo_password
-      MONGODB_HOSTNAME: localhost
+      MONGODB_HOSTNAME: lazarillo_mongodb_backend
+    ports:
+      - "80:80"
     volumes:
       - appdata:/var/www
     depends_on:
-      - lazarillo_admin_db
+      - lazarillo_mongodb_backend
     networks:
       - backend
-      - frontend
 
-  lazarillo_admin_db:
-    image: mongo
-    container_name: lazarillo_admin_db
+  lazarillo_mongodb_backend:
+    build:
+      context: mongodb
+      dockerfile: Dockerfile
+    image: lazarillo_mongodb_backend
+    container_name: lazarillo_mongodb_backend
     restart: unless-stopped
+    command: mongod --auth
     environment:
       MONGO_INITDB_ROOT_USERNAME: mongouser
       MONGO_INITDB_ROOT_PASSWORD: mongo_password
-      MONGO_INITDB_DATABASE: lazarillo_admin_db
+      MONGO_INITDB_DATABASE: lazarillo
       MONGODB_DATA_DIR: /data/db
       MONGODB_LOG_DIR: /dev/null
     volumes:
@@ -39,38 +44,12 @@ services:
     networks:
       - backend
 
-  webserver:
-    build:
-      context: nginx
-      dockerfile: Dockerfile
-    image: digitalocean.com/webserver:latest
-    container_name: lazarillo_admin_webserver
-    restart: unless-stopped
-    environment:
-      APP_ENV: "prod"
-      APP_NAME: "webserver"
-      APP_DEBUG: "false"
-      SERVICE_NAME: "webserver"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - nginxdata:/var/log/nginx
-    depends_on:
-      - lazarillo_admin_backend
-    networks:
-      - frontend
-
 networks:
   backend:
-    driver: bridge
-  frontend:
     driver: bridge
 
 volumes:
   appdata:
     driver: local
   mongodbdata:
-    driver: local
-  nginxdata:
     driver: local
