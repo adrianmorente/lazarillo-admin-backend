@@ -1,10 +1,13 @@
 import os
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
+from flask_cors import CORS, cross_origin
 
 
 # Create app and connect to database
 application = Flask(__name__)
+cors = CORS(application, resources={r"/*": {"origins": "*"}})
+application.config["CORS_HEADERS"] = 'Content-Type'
 application.config["MONGO_URI"] = 'mongodb://' + \
     os.environ['MONGODB_USERNAME'] + ':' + os.environ['MONGODB_PASSWORD'] + \
     '@' + os.environ['MONGODB_HOSTNAME'] + \
@@ -14,8 +17,8 @@ mongo = PyMongo(application)
 db = mongo.db
 
 
-@application.route("/broadcast", methods=['POST'])
 # Route to listen to broadcast messages from Lazarillo devices exposing their Websocket server
+@application.route("/broadcast", methods=['POST'])
 def read_device_broadcast():
     """Read parameters from device and store them into db"""
     name = request.form.get('name')
@@ -31,8 +34,9 @@ def read_device_broadcast():
     return jsonify(message='success'), 201
 
 
-@application.route("/devices", methods=['GET'])
 # Route to receive the devices that exposed their WS server
+@application.route("/devices", methods=['GET'])
+@cross_origin()
 def send_devices():
     """Retrieve devices from database and send them as JSON"""
     device = {}
@@ -40,6 +44,7 @@ def send_devices():
 
     for item in db.devices.find():
         device = {
+            'id': item['_id'].__str__(),
             'name': item['name'],
             'version': item['version'],
             'address': item['address']
@@ -51,6 +56,6 @@ def send_devices():
 
 if __name__ == "__main__":
     ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)
-    ENVIRONMENT_PORT = os.environ.get("APP_PORT", 80)
+    ENVIRONMENT_PORT = os.environ.get("APP_PORT", 5000)
     application.run(host='0.0.0.0', port=ENVIRONMENT_PORT,
                     debug=ENVIRONMENT_DEBUG)
